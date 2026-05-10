@@ -1,12 +1,1936 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-lang="en">
 <head>
-  <title>Title of the document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SafeCrew-AI — Worker Safety Monitoring</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    /* ── RESET & VARS ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:  #e8621a;
+      --orange2: #ff7a35;
+      --cyan:    #1cb5c9;
+      --cyan2:   #4dd4e4;
+    }
+
+    /* DARK MODE (default) */
+    [data-theme="dark"] {
+      --bg:      #0b1728;
+      --bg2:     #0f2033;
+      --bg3:     #162b45;
+      --white:   #f0f4f8;
+      --muted:   #7a9ab5;
+      --border:  rgba(28,181,201,0.18);
+      --card-bg: #0f2033;
+      --nav-bg:  rgba(11,23,40,0.85);
+      --tech-alt: #162b45;
+      --text-inv: #0b1728;
+    }
+
+    /* LIGHT MODE */
+    [data-theme="light"] {
+      --bg:      #f4f7fb;
+      --bg2:     #e8eef6;
+      --bg3:     #dde6f2;
+      --white:   #0f1e33;
+      --muted:   #4a6080;
+      --border:  rgba(28,181,201,0.25);
+      --card-bg: #ffffff;
+      --nav-bg:  rgba(244,247,251,0.92);
+      --tech-alt: #dde6f2;
+      --text-inv: #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'Barlow', sans-serif;
+      overflow-x: hidden;
+      cursor: none;
+      transition: background 0.35s ease, color 0.35s ease;
+    }
+
+    /* ── CUSTOM CURSOR ────────────────────────────────────────────── */
+    #cursor {
+      width: 12px; height: 12px;
+      background: var(--orange);
+      border-radius: 50%;
+      position: fixed; top: 0; left: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.08s ease, background 0.2s;
+    }
+    #cursor-ring {
+      width: 36px; height: 36px;
+      border: 1.5px solid var(--cyan);
+      border-radius: 50%;
+      position: fixed; top: 0; left: 0;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: all 0.18s ease;
+      opacity: 0.6;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ───────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── NAV ──────────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.35s;
+    }
+    .nav-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+      color: var(--white);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--orange); }
+    .nav-links { display: flex; gap: 28px; list-style: none; align-items: center; }
+    .nav-links a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: '';
+      position: absolute; left: 0; bottom: -4px;
+      width: 0; height: 1px;
+      background: var(--orange);
+      transition: width 0.25s ease;
+    }
+    .nav-links a:hover { color: var(--white); }
+    .nav-links a:hover::after { width: 100%; }
+
+    /* Toggle controls */
+    .nav-controls { display: flex; align-items: center; gap: 12px; }
+
+    .toggle-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    }
+    .toggle-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .toggle-btn.active { border-color: var(--orange); color: var(--orange); background: rgba(232,98,26,0.08); }
+
+    /* ── SECTION BASE ─────────────────────────────────────────────── */
+    section {
+      position: relative;
+      min-height: 100vh;
+      display: flex; align-items: center;
+      overflow: hidden;
+    }
+    .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+
+    /* ── SECTION LABEL ────────────────────────────────────────────── */
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 20px;
+    }
+    .section-tag::before {
+      content: '';
+      display: block;
+      width: 24px; height: 1px;
+      background: var(--cyan);
+    }
+
+    /* ══ HERO ══════════════════════════════════════════════════════ */
+    #hero {
+      min-height: 100vh;
+      background: var(--bg);
+      align-items: stretch;
+      padding-top: 64px;
+    }
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      width: 100%;
+      min-height: calc(100vh - 64px);
+    }
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 80px 64px 80px 80px;
+      position: relative;
+    }
+    .hero-left::after {
+      content: '';
+      position: absolute; right: 0; top: 10%; bottom: 10%;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, var(--cyan), transparent);
+    }
+    .hero-eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--orange);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      opacity: 0; animation: fadeUp 0.7s 0.2s forwards;
+    }
+    .hero-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(72px, 9vw, 120px);
+      font-weight: 900;
+      line-height: 0.9;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      opacity: 0; animation: fadeUp 0.7s 0.35s forwards;
+    }
+    .hero-title .accent { color: var(--orange); }
+    .hero-title .block-cyan {
+      display: block;
+      -webkit-text-stroke: 2px var(--cyan);
+      color: transparent;
+    }
+    .hero-sub {
+      margin-top: 28px;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--muted);
+      max-width: 400px;
+      opacity: 0; animation: fadeUp 0.7s 0.5s forwards;
+    }
+    .hero-cta {
+      display: flex; gap: 16px; margin-top: 40px;
+      opacity: 0; animation: fadeUp 0.7s 0.65s forwards;
+    }
+    .btn-primary {
+      background: var(--orange);
+      color: #fff;
+      border: none;
+      padding: 14px 32px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background: var(--orange2); transform: translateY(-2px); }
+    .btn-outline {
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      padding: 14px 32px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { background: rgba(28,181,201,0.1); transform: translateY(-2px); }
+
+    .hero-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 60px;
+      position: relative;
+    }
+    .hero-bg-number {
+      position: absolute;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: 320px;
+      color: rgba(28,181,201,0.04);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+          .hero-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+        display: block;
+      }
+
+      .hero-img-wrap {
+        overflow: visible; /* ini yang bikin efek "keluar kotak" */
+      }
+    .hero-img-placeholder {
+      width: 100%;
+      height: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-img-placeholder::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(232,98,26,0.08) 0%, transparent 60%);
+    }
+    .placeholder-icon { font-size: 48px; opacity: 0.4; }
+    .placeholder-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+    .hero-img-wrap::before, .hero-img-wrap::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      border-color: var(--orange);
+      border-style: solid;
+    }
+    .hero-img-wrap::before { top: -8px; right: -8px; border-width: 2px 2px 0 0; }
+    .hero-img-wrap::after  { bottom: -8px; left: -8px; border-width: 0 0 2px 2px; }
+
+    .hero-stats {
+      display: flex; gap: 12px; margin-top: 32px;
+      opacity: 0; animation: fadeUp 0.7s 0.8s forwards;
+    }
+    .stat-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+    }
+    [data-theme="light"] .stat-pill { background: rgba(0,0,0,0.04); }
+    .stat-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--orange);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ══ ABOUT ═════════════════════════════════════════════════════ */
+    #about { background: var(--bg2); padding: 120px 0; min-height: auto; }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .about-img-col { position: relative; }
+    .about-photo {
+      width: 100%;
+      max-width: 380px;
+      aspect-ratio: 3/4;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%);
+      position: relative;
+      overflow: hidden;
+      padding-left: 40px;
+    }
+    .about-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+    .about-photo::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(232,98,26,0.15) 0%, transparent 50%);
+    }
+    .about-photo-label {
+      position: absolute; bottom: 20px; left: 20px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--cyan);
+      letter-spacing: 0.1em;
+      z-index: 2;
+    }
+    .orange-line {
+      position: absolute; right: -20px; top: 10%;
+      width: 4px; height: 80%;
+      background: var(--orange);
+    }
+    .about-heading {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(48px, 6vw, 80px);
+      font-weight: 900;
+      text-transform: uppercase;
+      line-height: 0.9;
+      margin-bottom: 32px;
+    }
+    .about-heading .line2 { color: var(--cyan); display: block; }
+    .about-info-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--orange);
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+    .about-info-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .about-info-value { font-size: 15px; font-weight: 600; color: var(--white); }
+    .about-theme-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 24px;
+      padding: 10px 20px;
+      background: rgba(232,98,26,0.1);
+      border: 1px solid rgba(232,98,26,0.3);
+      font-size: 13px;
+      color: var(--orange);
+      font-weight: 600;
+    }
+
+    /* ══ PROBLEMS ══════════════════════════════════════════════════ */
+    #problems { background: var(--bg); padding: 120px 0; min-height: auto; }
+    .section-heading {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(56px, 8vw, 100px);
+      font-weight: 900;
+      text-transform: uppercase;
+      line-height: 0.88;
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+    }
+    .section-heading .stroke {
+      -webkit-text-stroke: 2px var(--white);
+      color: transparent;
+    }
+    [data-theme="light"] .section-heading .stroke {
+      -webkit-text-stroke: 2px var(--white);
+    }
+    .section-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 64px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.05em;
+    }
+    .problems-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      border: 1px solid var(--border);
+    }
+    .problem-card {
+      padding: 40px 28px;
+      border-right: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s;
+    }
+    .problem-card:last-child { border-right: none; }
+    .problem-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--orange);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .problem-card:hover { background: rgba(255,255,255,0.02); }
+    [data-theme="light"] .problem-card:hover { background: rgba(0,0,0,0.03); }
+    .problem-card:hover::before { transform: scaleX(1); }
+    .problem-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 72px;
+      font-weight: 900;
+      color: rgba(232,98,26,0.15);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .problem-icon { font-size: 36px; margin-bottom: 20px; display: block; }
+    .problem-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--white);
+      margin-bottom: 16px;
+    }
+    .problem-list { list-style: none; }
+    .problem-list li {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 8px;
+      padding-left: 14px;
+      position: relative;
+    }
+    .problem-list li::before {
+      content: '›';
+      position: absolute; left: 0;
+      color: var(--cyan);
+      font-size: 14px;
+      top: 0px;
+    }
+
+    /* ══ SOLUTION ══════════════════════════════════════════════════ */
+    #solution { background: var(--bg2); padding: 120px 0; min-height: auto; }
+    .solution-header { text-align: center; margin-bottom: 72px; }
+    .solution-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2px;
+      background: var(--border);
+    }
+    .solution-card {
+      background: var(--bg2);
+      padding: 48px 40px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s;
+    }
+    .solution-card::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(28,181,201,0.05) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .solution-card:hover { background: var(--bg3); }
+    .solution-card:hover::after { opacity: 1; }
+    .sol-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 120px;
+      font-weight: 900;
+      color: rgba(28,181,201,0.07);
+      position: absolute;
+      top: -20px; right: 20px;
+      line-height: 1;
+      pointer-events: none;
+    }
+    .sol-icon { font-size: 40px; margin-bottom: 24px; display: block; }
+    .sol-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--cyan);
+      margin-bottom: 20px;
+      line-height: 1.1;
+    }
+    .sol-points { list-style: none; }
+    .sol-points li {
+      font-size: 13.5px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 10px;
+      padding-left: 16px;
+      position: relative;
+    }
+    .sol-points li::before {
+      content: '▸';
+      position: absolute; left: 0;
+      color: var(--orange);
+      font-size: 10px;
+      top: 3px;
+    }
+
+    /* ══ PROJECT OVERVIEW (ENHANCED) ═══════════════════════════════ */
+    #overview { background: var(--bg); padding: 120px 0; min-height: auto; }
+    .overview-flex {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 80px;
+      align-items: start;
+    }
+
+    /* Menu nodes */
+    .flow-diagram { position: relative; }
+    .flow-node {
+      display: flex; align-items: center;
+      padding: 14px 20px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      position: relative;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .flow-node:hover { border-color: var(--cyan); }
+    .flow-node.active { border-color: var(--orange) !important; background: rgba(232,98,26,0.08); }
+    .flow-node-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .flow-node.root { border-left: 3px solid var(--orange); cursor: default; }
+    .flow-node.mid  { border-left: 3px solid var(--cyan); margin-left: 32px; }
+    .flow-node.leaf { border-left: 3px solid rgba(28,181,201,0.4); margin-left: 64px; font-size: 13px; }
+    .flow-connector {
+      width: 2px; height: 12px;
+      background: var(--border);
+      margin-left: 48px;
+    }
+    .flow-connector.deep { margin-left: 80px; }
+
+    /* Photo panel */
+    .overview-panel {
+      position: sticky;
+      top: 80px;
+    }
+    .overview-panel-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .panel-indicator {
+      width: 8px; height: 8px;
+      background: var(--orange);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    .photo-frame {
+      width: 100%;
+      aspect-ratio: 16/10;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+      margin-bottom: 20px;
+    }
+    .photo-frame::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(11,23,40,0.7) 100%);
+      z-index: 1;
+    }
+    [data-theme="light"] .photo-frame::before {
+      background: linear-gradient(to bottom, transparent 50%, rgba(244,247,251,0.6) 100%);
+    }
+
+    /* Scan line effect */
+    .scan-wrap { position: relative; overflow: hidden; }
+    .scan-wrap::after {
+      content: '';
+      position: absolute; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(to right, transparent, var(--cyan), transparent);
+      animation: scanLine 3s linear infinite;
+      opacity: 0.4;
+      z-index: 2;
+    }
+    @keyframes scanLine { 0% { top: -4px; } 100% { top: 100%; } }
+
+    .photo-slot {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      font-size: 48px;
+    }
+    .photo-slot.visible { opacity: 1; }
+    .photo-slot-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-align: center;
+      text-transform: uppercase;
+      padding: 0 20px;
+      z-index: 2;
+    }
+    .photo-slot-caption {
+      position: absolute;
+      bottom: 16px; left: 16px; right: 16px;
+      z-index: 3;
+    }
+    .caption-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--orange2);
+      letter-spacing: 0.04em;
+    }
+    .caption-desc {
+      font-size: 12px;
+      color: #ffff;
+      margin-top: 4px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    /* Emoji-art visual for each menu */
+    .photo-visual {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+    }
+
+    .photo-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .panel-desc {
+      font-size: 13.5px;
+      color: var(--muted);
+      line-height: 1.75;
+      padding: 16px 20px;
+      background: rgba(28,181,201,0.05);
+      border-left: 2px solid var(--cyan);
+    }
+
+    /* ══ EXISTING SOLUTIONS ════════════════════════════════════════ */
+    #existing { background: var(--bg2); padding: 120px 0; min-height: auto; }
+    .existing-intro {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 80px;
+      align-items: start;
+      margin-bottom: 64px;
+    }
+    .existing-intro-text {
+      font-size: 14.5px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+    .existing-intro-text p { margin-bottom: 16px; }
+    .existing-intro-text p:last-child { margin-bottom: 0; }
+
+    .existing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: var(--border);
+    }
+    .existing-card {
+      background: var(--bg2);
+      padding: 40px 32px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s;
+    }
+    .existing-card:hover { background: var(--bg3); }
+    .existing-card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(to right, var(--cyan), transparent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s;
+    }
+    .existing-card:hover::after { transform: scaleX(1); }
+
+    .existing-logo {
+      width: 48px; height: 48px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .existing-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--white);
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .existing-type {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .existing-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .existing-tags {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .existing-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      background: rgba(28,181,201,0.08);
+      border: 1px solid rgba(28,181,201,0.2);
+      color: var(--cyan);
+      text-transform: uppercase;
+    }
+    .existing-tag.limit { background: rgba(232,98,26,0.08); border-color: rgba(232,98,26,0.2); color: var(--orange); }
+
+    .existing-gap {
+      margin-top: 48px;
+      padding: 32px 40px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+    .existing-gap-icon { font-size: 36px; }
+    .existing-gap-text {}
+    .existing-gap-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--orange);
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .existing-gap-desc { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
+
+    /* ══ USP ════════════════════════════════════════════════════════ */
+    #usp { background: var(--bg); padding: 120px 0; min-height: auto; }
+    .usp-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-top: 64px;
+    }
+    .usp-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 40px 36px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+    .usp-card:hover { border-color: var(--orange); transform: translateY(-4px); }
+    .usp-card::before {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(to right, var(--orange), transparent);
+    }
+    .usp-number {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--orange);
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+    .usp-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--white);
+      margin-bottom: 20px;
+      line-height: 1.1;
+    }
+    .usp-desc { font-size: 13.5px; color: var(--muted); line-height: 1.75; }
+    .usp-desc strong { color: var(--cyan); font-weight: 600; }
+
+    /* ══ TECH STACK ════════════════════════════════════════════════ */
+    #tech { background: var(--bg2); padding: 120px 0; min-height: auto; }
+    .tech-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: var(--border);
+      margin-top: 64px;
+    }
+    .tech-col { background: var(--bg2); padding: 48px 40px; }
+    .tech-col.alt { background: var(--tech-alt); }
+    .tech-col-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 32px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tech-col-label.cyan { color: var(--cyan); }
+    .tech-item { display: flex; gap: 16px; margin-bottom: 28px; }
+    .tech-item-icon {
+      width: 40px; height: 40px;
+      background: rgba(28,181,201,0.08);
+      border: 1px solid rgba(28,181,201,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .tech-item-icon.hw {
+      background: rgba(232,98,26,0.08);
+      border-color: rgba(232,98,26,0.2);
+    }
+    .tech-item-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .tech-item-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+    /* ══ CTA ════════════════════════════════════════════════════════ */
+    #cta {
+      background: var(--bg2);
+      padding: 140px 0;
+      min-height: auto;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    #cta::before {
+      content: 'SAFE';
+      position: absolute;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: 300px;
+      color: rgba(232,98,26,0.04);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      letter-spacing: -0.04em;
+    }
+    .cta-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .cta-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(56px, 8vw, 110px);
+      font-weight: 900;
+      text-transform: uppercase;
+      line-height: 0.9;
+      margin-bottom: 24px;
+    }
+    .cta-title .lo { display: block; color: var(--orange); }
+    .cta-sub { font-size: 15px; color: var(--muted); margin-bottom: 48px; font-style: italic; }
+    .cta-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* ══ FOOTER ════════════════════════════════════════════════════ */
+    footer {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 32px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-brand {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: 18px;
+      color: var(--white);
+    }
+    .footer-brand span { color: var(--orange); }
+    .footer-copy {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    .footer-event {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── SCROLL REVEAL ────────────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(36px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ── KEYFRAMES ────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* Progress bar */
+    #progress-bar {
+      position: fixed; top: 0; left: 0;
+      height: 2px;
+      background: var(--orange);
+      z-index: 200;
+      transition: width 0.1s linear;
+    }
+
+    /* ── MOBILE ───────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      nav { padding: 0 24px; }
+      .nav-links { display: none; }
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-left { padding: 60px 32px; }
+      .hero-left::after { display: none; }
+      .hero-right { display: none; }
+      .about-grid, .overview-flex, .existing-intro { grid-template-columns: 1fr; gap: 40px; }
+      .problems-grid { grid-template-columns: 1fr 1fr; }
+      .problem-card { border-bottom: 1px solid var(--border); }
+      .solution-grid, .usp-grid, .tech-split, .existing-grid { grid-template-columns: 1fr; }
+      .container { padding: 0 24px; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+      .existing-gap { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 
-<h1>This is a heading</h1>
-<p>This is a paragraph.</p>
+<div id="progress-bar"></div>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
 
+<!-- ── NAV ───────────────────────────────────────────────────────── -->
+<nav>
+  <a href="#hero" class="nav-logo">Safe<span>Crew</span>-AI</a>
+  <ul class="nav-links">
+    <li><a href="#about" data-i18n="nav_about">About</a></li>
+    <li><a href="#problems" data-i18n="nav_problems">Problems</a></li>
+    <li><a href="#solution" data-i18n="nav_solution">Solution</a></li>
+    <li><a href="#overview" data-i18n="nav_overview">Overview</a></li>
+    <li><a href="#existing" data-i18n="nav_existing">Existing</a></li>
+    <li><a href="#usp" data-i18n="nav_usp">Why Us</a></li>
+    <li><a href="#tech" data-i18n="nav_tech">Tech</a></li>
+  </ul>
+  <div class="nav-controls">
+    <button class="toggle-btn" id="lang-toggle" title="Toggle Language">🌐 <span id="lang-label">ID</span></button>
+    <button class="toggle-btn" id="theme-toggle" title="Toggle Theme"><span id="theme-icon">☀️</span> <span id="theme-label">Light</span></button>
+  </div>
+</nav>
+
+<!-- ══ HERO ══════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <p class="hero-eyebrow">// Codeavour 7.0 International — Clean Planet, Healthy People</p>
+      <h1 class="hero-title">
+        Safe<span class="accent">Crew</span>
+        <span class="block-cyan">-AI</span>
+      </h1>
+      <p class="hero-sub" data-i18n="hero_sub">
+        An AI-powered worker safety monitoring system designed to detect and prevent industrial accidents in real time.
+      </p>
+      <div class="hero-stats">
+        <div class="stat-pill">
+          <div>
+            <div class="stat-num">4</div>
+            <div class="stat-label" data-i18n="stat_risk">Risk<br>Factors</div>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <div>
+            <div class="stat-num">AI</div>
+            <div class="stat-label" data-i18n="stat_fatigue">Fatigue<br>Detection</div>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <div>
+            <div class="stat-num">24/7</div>
+            <div class="stat-label" data-i18n="stat_live">Live<br>Monitoring</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-cta">
+        <a href="#solution" class="btn-primary" data-i18n="btn_solution">See the Solution</a>
+        <a href="#overview" class="btn-outline" data-i18n="btn_overview">Project Overview</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-bg-number">AI</div>
+      <div class="hero-img-wrap scan-wrap">
+        <div class="hero-img-placeholder">
+         <div class="hero-img-wrap scan-wrap">
+          <img src="images/heroimage.png" alt="Hero Image" class="hero-img">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ ABOUT ══════════════════════════════════════════════════════════ -->
+<section id="about" style="padding:120px 0; min-height:auto; background: var(--bg2);">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-img-col reveal">
+        <div class="about-photo scan-wrap">
+           <img src="images/aboutme.png"
+               alt="Muhammad Aryasatya Haidar"
+               style="width:100%;height:100%;object-fit:cover;" />
+          <div class="about-photo-label">// Muhammad Aryasatya Haidar</div>
+        </div>
+        <div class="orange-line"></div>
+      </div>
+      <div class="about-content">
+        <p class="section-tag reveal" data-i18n="about_tag">About the Creator</p>
+        <h2 class="about-heading reveal">
+          <span data-i18n="about_h1">About</span><br><span class="line2" data-i18n="about_h2">Me!</span>
+        </h2>
+        <div class="about-info-card reveal reveal-delay-1">
+          <div class="about-info-label" data-i18n="label_name">Name</div>
+          <div class="about-info-value">Muhammad Aryasatya Haidar</div>
+        </div>
+        <div class="about-info-card reveal reveal-delay-2">
+          <div class="about-info-label" data-i18n="label_school">School</div>
+          <div class="about-info-value">Al-Wildan 15 Bekasi</div>
+        </div>
+        <div class="about-info-card reveal reveal-delay-3">
+          <div class="about-info-label" data-i18n="label_goal">Goal</div>
+          <div class="about-info-value" data-i18n="goal_value">Creating a safe workplace for workers around the world</div>
+        </div>
+        <div class="about-theme-badge reveal reveal-delay-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/><path d="M12 8v4l3 3"/><path d="M5 12H2"/></svg>
+          <span data-i18n="theme_badge">Theme: Clean Planet, Healthy People</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PROBLEMS ════════════════════════════════════════════════════════ -->
+<section id="problems" style="padding:120px 0; min-height:auto; background:var(--bg);">
+  <div class="container">
+    <p class="section-tag reveal">// 01 — <span data-i18n="problems_tag">Identifying the Challenge</span></p>
+    <h2 class="section-heading reveal">
+      <span class="stroke" data-i18n="prob_h1">Work</span><span data-i18n="prob_h1b">place</span><br>
+      <span style="color:var(--orange);" data-i18n="prob_h2">Accidents</span>
+    </h2>
+    <p class="section-sub reveal" data-i18n="prob_sub">Four critical hazards threatening worker safety every single day.</p>
+    <div class="problems-grid reveal">
+      <div class="problem-card">
+        <div class="problem-num">01</div>
+        <span class="problem-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--orange)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/><path d="M8 9.5c0-.5.5-1.5 2-1.5"/><path d="M14 9.5c0-.5.5-1.5 2-1.5"/></svg></span>
+        <div class="problem-title" data-i18n="p1_title">Fatigue &amp; Stress</div>
+        <ul class="problem-list">
+          <li data-i18n="p1_a">Long hours and accumulated stress reduce alertness significantly</li>
+          <li data-i18n="p1_b">Workers lose focus and reaction speed due to long shifts</li>
+        </ul>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">02</div>
+        <span class="problem-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--orange)"><path d="M17 11l-5 9-5-9"/><path d="M6.5 5.5h11l-1.5 5.5H8L6.5 5.5z"/><line x1="3" y1="5.5" x2="21" y2="5.5"/></svg></span>
+        <div class="problem-title" data-i18n="p2_title">Alcohol Consumption</div>
+        <ul class="problem-list">
+          <li data-i18n="p2_a">Alcohol reduces awareness and increases the chance of mistakes</li>
+          <li data-i18n="p2_b">Impaired workers may fail to follow safety procedures or respond to hazards</li>
+        </ul>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">03</div>
+        <span class="problem-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--orange)"><path d="M2 16h16v3H2z"/><path d="M20 16h2v3h-2z"/><path d="M18 16v3"/><path d="M18 5c0 4-3 5-3 9"/><path d="M14 5c0 4-3 5-3 9"/></svg></span>
+        <div class="problem-title" data-i18n="p3_title">Smoking Hazards</div>
+        <ul class="problem-list">
+          <li data-i18n="p3_a">Smoking in restricted areas can cause serious fire risks</li>
+          <li data-i18n="p3_b">Smoke exposure indicates violations of workplace safety regulations</li>
+        </ul>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">04</div>
+        <span class="problem-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--orange)"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>
+        <div class="problem-title" data-i18n="p4_title">Lack of Supervision</div>
+        <ul class="problem-list">
+          <li data-i18n="p4_a">Without continuous monitoring, dangerous conditions go unnoticed</li>
+          <li data-i18n="p4_b">Manual supervision cannot detect risks immediately enough</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SOLUTION ════════════════════════════════════════════════════════ -->
+<section id="solution" style="padding:120px 0; min-height:auto; background:var(--bg2);">
+  <div class="container">
+    <div class="solution-header">
+      <p class="section-tag reveal" style="justify-content:center;">// 02 — <span data-i18n="sol_tag">The Answer</span></p>
+      <h2 class="section-heading reveal" style="text-align:center;">
+        <span data-i18n="sol_h1">Solution</span><br>
+        <span style="color:var(--orange);font-style:italic;">SafeCrew-AI</span>
+      </h2>
+      <p class="section-sub reveal" style="text-align:center;margin-bottom:0;" data-i18n="sol_sub">Four integrated features that cover every angle of worker safety.</p>
+    </div>
+    <div class="solution-grid reveal">
+      <div class="solution-card">
+        <div class="sol-num">01</div>
+        <span class="sol-icon"><img src="images/aifatigue.png" alt="AI Fatigue" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 6px var(--cyan));"></span>
+        <div class="sol-title" data-i18n="s1_title">AI Fatigue<br>Detection</div>
+        <ul class="sol-points">
+          <li data-i18n="s1_a">Uses Machine Learning to analyze worker awareness levels and detect signs of fatigue in real time</li>
+          <li data-i18n="s1_b">Early detection helps prevent accidents caused by reduced alertness before they happen</li>
+        </ul>
+      </div>
+      <div class="solution-card">
+        <div class="sol-num">02</div>
+        <span class="sol-icon"><img src="images/healthcheck.png" alt="Health Check" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 6px var(--cyan));"></span>
+        <div class="sol-title" data-i18n="s2_title">Health<br>Check-Up</div>
+        <ul class="sol-points">
+          <li data-i18n="s2_a">Workers complete a daily health check to confirm they're fit for duty</li>
+          <li data-i18n="s2_b">Uses alcohol sensor, oxygen saturation (SpO2), and heart rate monitoring</li>
+        </ul>
+      </div>
+      <div class="solution-card">
+        <div class="sol-num">03</div>
+        <span class="sol-icon"><img src="images/smoke.png" alt="Smoke Detection" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 6px var(--cyan));"></span>
+        <div class="sol-title" data-i18n="s3_title">Smoke<br>Detection</div>
+        <ul class="sol-points">
+          <li data-i18n="s3_a">Smoke sensors continuously monitor the environment for unsafe conditions</li>
+          <li data-i18n="s3_b">System alerts supervisors immediately when smoking is detected in restricted zones</li>
+        </ul>
+      </div>
+      <div class="solution-card">
+        <div class="sol-num">04</div>
+        <span class="sol-icon"><img src="images/monitoring.png" alt="Monitoring" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 6px var(--cyan));"></span>
+        <div class="sol-title" data-i18n="s4_title">Real-Time<br>Monitoring</div>
+        <ul class="sol-points">
+          <li data-i18n="s4_a">Live camera monitoring of worker activities as soon as the system is activated</li>
+          <li data-i18n="s4_b">Enables supervisors to quickly identify and respond to potential risks as they emerge</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PROJECT OVERVIEW (ENHANCED) ═════════════════════════════════════ -->
+<section id="overview" style="padding:120px 0; min-height:auto; background:var(--bg);">
+  <div class="container">
+    <p class="section-tag reveal">// 03 — <span data-i18n="ov_tag">System Architecture</span></p>
+    <h2 class="section-heading reveal" style="font-size:clamp(40px,5vw,72px); margin-bottom: 56px;">
+      <span data-i18n="ov_h1">Project</span><br><span style="color:var(--cyan);" data-i18n="ov_h2">Overview</span>
+    </h2>
+    <div class="overview-flex">
+      <!-- Flow menu -->
+      <div class="flow-diagram reveal">
+        <p style="font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-bottom:16px;" data-i18n="ov_click_hint">↓ Click a menu to see details</p>
+
+        <div class="flow-node root">
+          <span class="flow-node-label" style="color:var(--orange);" data-i18n="fl_admin_login">Admin Login</span>
+        </div>
+        <div class="flow-connector"></div>
+        <div class="flow-node root">
+          <span class="flow-node-label" data-i18n="fl_menu_sel">Menu Selection</span>
+        </div>
+
+        <!-- Employee branch -->
+        <div style="margin-top:8px;">
+          <div class="flow-node mid" data-menu="employee_menu">
+            <span class="flow-node-label" style="color:var(--cyan);" data-i18n="fl_emp_menu">Employee Menu</span>
+          </div>
+          <div class="flow-connector deep"></div>
+          <div class="flow-node leaf" data-menu="emp_registry">
+            <span class="flow-node-label" data-i18n="fl_emp_reg">Employee Registry</span>
+          </div>
+          <div style="height:8px;"></div>
+          <div class="flow-node leaf" data-menu="medical_checkup">
+            <span class="flow-node-label" data-i18n="fl_medical">Medical Check-Up</span>
+          </div>
+        </div>
+
+        <!-- Admin branch -->
+        <div style="margin-top:8px;">
+          <div class="flow-node mid" data-menu="admin_menu">
+            <span class="flow-node-label" style="color:var(--cyan);" data-i18n="fl_admin_menu">Admin Menu</span>
+          </div>
+          <div class="flow-connector deep"></div>
+          <div class="flow-node leaf" data-menu="live_monitoring">
+            <span class="flow-node-label" data-i18n="fl_live_mon">Live Monitoring</span>
+          </div>
+          <div style="height:8px;"></div>
+          <div class="flow-node leaf" data-menu="admin_control">
+            <span class="flow-node-label" data-i18n="fl_admin_ctrl">Admin Control</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Photo panel -->
+      <div class="overview-panel reveal reveal-delay-2">
+        <div class="overview-panel-title">
+          <div class="panel-indicator"></div>
+          <span id="panel-menu-name" data-i18n="ov_default_title">System Overview</span>
+        </div>
+        <div class="photo-frame scan-wrap" id="photo-frame">
+          <!-- Default state -->
+          <div class="photo-slot visible" id="slot-default">
+            <div class="photo-visual"><img src="images/login.jpeg"></div>
+          </div>
+
+          <!-- Employee Menu -->
+          <div class="photo-slot" id="slot-employee_menu">
+            <div class="photo-visual"><img src="images/employeemenu.jpeg"></div>
+            <div class="photo-slot-caption">
+              <div class="caption-title" data-i18n="slot_emp_menu_title">Employee Menu</div>
+              <div class="caption-desc" data-i18n="slot_emp_menu_desc">Central hub for all employee-related actions — from registration to daily health checks.</div>
+            </div>
+          </div>
+
+          <!-- Employee Registry -->
+          <div class="photo-slot" id="slot-emp_registry">
+            <div class="photo-visual"><img src="images/employeregistry.jpeg"></div>
+            <div class="photo-slot-caption">
+              <div class="caption-title" data-i18n="slot_emp_reg_title">Employee Registry</div>
+              <div class="caption-desc" data-i18n="slot_emp_reg_desc">Stores worker profiles including ID, role, and shift information for the monitoring system.</div>
+            </div>
+          </div>
+
+          <!-- Medical Check-Up -->
+          <div class="photo-slot" id="slot-medical_checkup">
+            <div class="photo-visual"><img src="images/medicalcheckup.jpeg"></div>
+            <div class="photo-slot-caption">
+              <div class="caption-title" data-i18n="slot_medical_title">Medical Check-Up</div>
+              <div class="caption-desc" data-i18n="slot_medical_desc">Workers submit daily vitals — heart rate, SpO2, and alcohol level — before entering the site.</div>
+            </div>
+          </div>
+
+          <!-- Admin Menu -->
+          <div class="photo-slot" id="slot-admin_menu">
+            <div class="photo-visual"><img src="images/adminmenu.jpeg"></div>
+            <div class="photo-slot-caption">
+              <div class="caption-title" data-i18n="slot_admin_menu_title">Admin Menu</div>
+              <div class="caption-desc" data-i18n="slot_admin_menu_desc">Restricted access area for supervisors to manage site operations and review safety data.</div>
+            </div>
+          </div>
+
+          <!-- Live Monitoring -->
+          <div class="photo-slot" id="slot-live_monitoring">
+            <div class="photo-visual"><img src="images/livemonitoring.jpeg"></div>
+            <div class="photo-slot-caption">
+              <div class="caption-title" data-i18n="slot_live_title">Live Monitoring</div>
+              <div class="caption-desc" data-i18n="slot_live_desc">Real-time camera feed combined with AI fatigue analysis and sensor alerts displayed on one dashboard.</div>
+            </div>
+          </div>
+
+          <!-- Admin Control -->
+          <div class="photo-slot" id="slot-admin_control">
+            <div class="photo-visual"><img src="images/admincontrol.jpeg"></div>
+            <div class="photo-slot-caption">
+              <div class="caption-title" data-i18n="slot_admin_ctrl_title">Admin Control</div>
+              <div class="caption-desc" data-i18n="slot_admin_ctrl_desc">Configure thresholds, manage alerts, and review historical incident logs from one control panel.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description text -->
+        <div class="panel-desc" id="panel-desc" data-i18n="ov_panel_default">
+          The system is built around a clean role-based login. Once authenticated, the admin can navigate between the employee-facing tools and the supervisor's control panel. Each menu is purpose-built to keep things fast and focused.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ EXISTING SOLUTIONS ════════════════════════════════════════════════ -->
+<section id="existing" style="padding:120px 0; min-height:auto; background:var(--bg2);">
+  <div class="container">
+    <p class="section-tag reveal">// 04 — <span data-i18n="ex_tag">Before SafeCrew-AI</span></p>
+    <h2 class="section-heading reveal">
+      <span data-i18n="ex_h1">Existing</span><br>
+      <span style="color:var(--cyan);" data-i18n="ex_h2">Solutions</span>
+    </h2>
+
+    <div class="existing-intro reveal">
+      <div>
+        <p class="section-sub" style="margin-bottom:0;" data-i18n="ex_sub">Products that already exist in the market — and what they're missing.</p>
+      </div>
+      <div class="existing-intro-text">
+        <p data-i18n="ex_intro_1">Workplace safety technology isn't new. Several products have been around for years, each tackling a piece of the problem. Smart helmets detect microsleep. Wearables track body fatigue through sleep data. Breathalyzers are used at entry gates.</p>
+        <p data-i18n="ex_intro_2">But here's the thing — none of them talk to each other. A helmet won't tell you if a worker also had alcohol. A wearable won't catch smoke in a restricted area. And most of these systems come with a price tag that rules them out for smaller worksites entirely.</p>
+      </div>
+    </div>
+
+    <div class="existing-grid reveal">
+      <!-- SmartCap -->
+      <div class="existing-card">
+        <div class="existing-logo"><img src="images/smartcap.png" alt="SmartCap" style="width:32px;height:32px;object-fit:contain;"></div>
+        <div class="existing-name">SmartCap</div>
+        <div class="existing-type" data-i18n="ex_type_helmet">Fatigue Monitoring Helmet</div>
+        <div class="existing-desc" data-i18n="ex_smartcap_desc">A sensor-embedded safety cap that tracks brainwave-like signals to detect fatigue and microsleep events. Primarily used in mining, heavy transport, and construction. Data is pushed to a cloud dashboard for supervisors to review.</div>
+        <div class="existing-tags">
+          <span class="existing-tag" data-i18n="tag_fatigue">Fatigue Detection</span>
+          <span class="existing-tag" data-i18n="tag_wearable">Wearable</span>
+          <span class="existing-tag limit" data-i18n="tag_no_alcohol">No Alcohol Check</span>
+          <span class="existing-tag limit" data-i18n="tag_costly">High Cost</span>
+        </div>
+      </div>
+
+      <!-- Readi Watch -->
+      <div class="existing-card">
+        <div class="existing-logo"><img src="images/readiwatch.png" alt="Readi Watch" style="width:32px;height:32px;object-fit:contain;"></div>
+        <div class="existing-name">Readi/Watch</div>
+        <div class="existing-type" data-i18n="ex_type_watch">Wearable Fatigue Monitor</div>
+        <div class="existing-desc" data-i18n="ex_readi_desc">A smartwatch-style device that estimates a worker's fatigue level by analyzing their sleep patterns overnight. Gives a readiness score at shift start. Widely used in aviation and rail industries, but requires workers to wear the device off-hours too.</div>
+        <div class="existing-tags">
+          <span class="existing-tag" data-i18n="tag_sleep">Sleep Tracking</span>
+          <span class="existing-tag" data-i18n="tag_predictive">Predictive Score</span>
+          <span class="existing-tag limit" data-i18n="tag_no_realtime">No Real-Time Sensor</span>
+          <span class="existing-tag limit" data-i18n="tag_compliance">Compliance Dependent</span>
+        </div>
+      </div>
+
+      <!-- Generic Breathalyzer -->
+      <div class="existing-card">
+        <div class="existing-logo"><img src="images/gatebreathalyzer.png" alt="Gate Breathalyzer" style="width:32px;height:32px;object-fit:contain;"></div>
+        <div class="existing-name" data-i18n="ex_breath_name">Gate Breathalyzer</div>
+        <div class="existing-type" data-i18n="ex_type_breath">Standalone Alcohol Check</div>
+        <div class="existing-desc" data-i18n="ex_breath_desc">Entry-gate breathalyzers are the most common alcohol screening tool on worksites. Workers blow into the device at the start of their shift. Simple, reliable — but completely manual, has no integration with any health or safety dashboard, and only checks for alcohol once a day.</div>
+        <div class="existing-tags">
+          <span class="existing-tag" data-i18n="tag_alcohol">Alcohol Detection</span>
+          <span class="existing-tag" data-i18n="tag_affordable">Low Cost</span>
+          <span class="existing-tag limit" data-i18n="tag_manual">Manual Process</span>
+          <span class="existing-tag limit" data-i18n="tag_no_integration">No Integration</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="existing-gap reveal">
+      <div class="existing-gap-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--orange)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      <div class="existing-gap-text">
+        <div class="existing-gap-title" data-i18n="gap_title">The Gap They All Share</div>
+        <div class="existing-gap-desc" data-i18n="gap_desc">Every product above solves one problem in isolation. None of them combine fatigue detection, alcohol monitoring, smoke detection, and live supervision into a single system. SafeCrew-AI was designed to fill exactly that gap — without requiring expensive proprietary hardware that most worksites can't afford.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ USP ══════════════════════════════════════════════════════════════ -->
+<section id="usp" style="padding:120px 0; min-height:auto; background:var(--bg);">
+  <div class="container">
+    <p class="section-tag reveal">// 05 — <span data-i18n="usp_tag">Competitive Advantage</span></p>
+    <h2 class="section-heading reveal">
+      <span data-i18n="usp_h1">Unique</span><br><span style="color:var(--orange);" data-i18n="usp_h2">Selling</span><br>
+      <span class="stroke" data-i18n="usp_h3">Point</span>
+    </h2>
+    <div class="usp-grid">
+      <div class="usp-card reveal reveal-delay-1">
+        <div class="usp-number">USP — 01</div>
+        <div class="usp-title" data-i18n="usp1_title">Multi-Factor Risk Monitoring</div>
+        <p class="usp-desc" data-i18n="usp1_desc">Unlike existing systems that only detect fatigue, SafeCrew-AI monitors <strong>multiple safety risks simultaneously</strong> — fatigue, alcohol exposure, and smoking behavior — ensuring broader and more comprehensive worker protection.</p>
+      </div>
+      <div class="usp-card reveal reveal-delay-2">
+        <div class="usp-number">USP — 02</div>
+        <div class="usp-title" data-i18n="usp2_title">Real-Time Risk Calculation</div>
+        <p class="usp-desc" data-i18n="usp2_desc">The system continuously calculates a <strong>dynamic risk score</strong> based on multiple sensor inputs, enabling early detection of unsafe conditions and preventing accidents before they can occur on the worksite.</p>
+      </div>
+      <div class="usp-card reveal reveal-delay-3">
+        <div class="usp-number">USP — 03</div>
+        <div class="usp-title" data-i18n="usp3_title">Accessible &amp; Cost-Effective</div>
+        <p class="usp-desc" data-i18n="usp3_desc">No need for specialized equipment like smart helmets or wearables. The system uses <strong>standard sensors and camera monitoring</strong>, making it significantly easier and cheaper to implement at any workplace.</p>
+      </div>
+      <div class="usp-card reveal reveal-delay-4">
+        <div class="usp-number">USP — 04</div>
+        <div class="usp-title" data-i18n="usp4_title">Integrated Monitoring Platform</div>
+        <p class="usp-desc" data-i18n="usp4_desc">Combines sensor data, AI analysis, and a supervisor dashboard into <strong>a single unified platform</strong>, making it easy for managers to track and respond to worker health conditions from one place.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TECH STACK ════════════════════════════════════════════════════════ -->
+<section id="tech" style="padding:120px 0; min-height:auto; background:var(--bg2);">
+  <div class="container">
+    <p class="section-tag reveal">// 06 — <span data-i18n="tech_tag">Under the Hood</span></p>
+    <h2 class="section-heading reveal">
+      <span data-i18n="tech_h1">Software &amp;</span><br>
+      <span style="color:var(--cyan);" data-i18n="tech_h2">Hardware</span>
+    </h2>
+    <div class="tech-split reveal">
+      <div class="tech-col">
+        <div class="tech-col-label" data-i18n="tech_sw">Software</div>
+        <div class="tech-item">
+          <div class="tech-item-icon"><img src="images/monitoring.png" alt="Dashboard" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="sw1_name">Monitoring Interface</div>
+            <div class="tech-item-desc" data-i18n="sw1_desc">Provides a real-time dashboard for supervisors to observe worker status and respond to alerts immediately.</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-item-icon"><img src="images/riskscore.png" alt="Risk Score" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="sw2_name">Risk Calculation Algorithm</div>
+            <div class="tech-item-desc" data-i18n="sw2_desc">Processes all sensor inputs and generates a dynamic risk score based on current safety conditions.</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-item-icon"><img src="images/aifatigue.png" alt="Fatigue Detection" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="sw3_name">Fatigue Detection (ML)</div>
+            <div class="tech-item-desc" data-i18n="sw3_desc">Tracks worker fatigue over time using machine learning-based drowsiness detection models.</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-item-icon"><img src="images/alert.png" alt="Alert System" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="sw4_name">Alert System</div>
+            <div class="tech-item-desc" data-i18n="sw4_desc">Automatically triggers alarm signals when risk levels reach a critical threshold.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tech-col alt">
+        <div class="tech-col-label cyan" data-i18n="tech_hw">Hardware</div>
+        <div class="tech-item">
+          <div class="tech-item-icon hw"><img src="images/alcoholsensor.png" alt="Alcohol Sensor" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="hw1_name">Alcohol Sensor (MQ-3)</div>
+            <div class="tech-item-desc" data-i18n="hw1_desc">Detects alcohol presence in the environment to prevent impaired working conditions on site.</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-item-icon hw"><img src="images/smokedetector.png" alt="Smoke Sensor" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="hw2_name">Smoke Sensor (MQ-135)</div>
+            <div class="tech-item-desc" data-i18n="hw2_desc">Monitors restricted areas for smoke or hazardous air conditions in real time.</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-item-icon hw"><img src="images/displaymodule.png" alt="Display Modules" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="hw3_name">Display Modules (LCD &amp; LED)</div>
+            <div class="tech-item-desc" data-i18n="hw3_desc">Shows alarm state and gives visual signals when a risk event is triggered.</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-item-icon hw"><img src="images/heartratespo2.png" alt="Heart Rate" style="width:22px;height:22px;object-fit:contain;"></div>
+          <div>
+            <div class="tech-item-name" data-i18n="hw4_name">Heart Rate &amp; SpO2 (MAX3012)</div>
+            <div class="tech-item-desc" data-i18n="hw4_desc">Detects heart rate and oxygen saturation, sending live data to ThingSpeak and PictoBlox.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA ═══════════════════════════════════════════════════════════════ -->
+<section id="cta">
+  <div class="container" style="position:relative;z-index:2;">
+    <p class="cta-label reveal">// <span data-i18n="cta_eyebrow">Let's make it happen</span></p>
+    <h2 class="cta-title reveal">
+      <span data-i18n="cta_h1">Safer</span><br>
+      <span class="lo" data-i18n="cta_h2">Workers.</span>
+      <span data-i18n="cta_h3">Smarter</span><br>
+      <span data-i18n="cta_h4">Sites.</span>
+    </h2>
+    <p class="cta-sub reveal" data-i18n="cta_sub">"Let's make a safer workplace for the hard-working workers out there!"</p>
+    <div class="cta-btns reveal">
+      <a href="#problems" class="btn-primary" data-i18n="cta_btn1">Explore the Problem</a>
+      <a href="#solution" class="btn-outline" data-i18n="cta_btn2">See the Solution</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-brand">Safe<span>Crew</span>-AI</div>
+  <div class="footer-copy">© 2026 Muhammad Aryasatya Haidar — All rights reserved</div>
+  <div class="footer-event">Codeavour 7.0 International</div>
+</footer>
+
+<!-- ── SCRIPTS ──────────────────────────────────────────────────────── -->
+<script>
+  /* ── CUSTOM CURSOR ── */
+  const cursor = document.getElementById('cursor');
+  const ring   = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  function animCursor() {
+    cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+    rx += (mx - rx) * 0.14; ry += (my - ry) * 0.14;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(animCursor);
+  }
+  animCursor();
+
+  /* ── PROGRESS BAR ── */
+  const bar = document.getElementById('progress-bar');
+  window.addEventListener('scroll', () => {
+    const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+    bar.style.width = (pct * 100) + '%';
+  });
+
+  /* ── SCROLL REVEAL ── */
+  const reveals = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => io.observe(el));
+
+  /* ── SMOOTH SCROLL ── */
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const t = document.querySelector(a.getAttribute('href'));
+      if (t) t.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  /* ─────────────────────────────────────────
+     THEME TOGGLE
+  ───────────────────────────────────────── */
+  const html       = document.documentElement;
+  const themeBtn   = document.getElementById('theme-toggle');
+  const themeIcon  = document.getElementById('theme-icon');
+  const themeLabel = document.getElementById('theme-label');
+
+  function setTheme(t) {
+    html.setAttribute('data-theme', t);
+    if (t === 'light') {
+      themeIcon.textContent  = '🌙';
+      themeLabel.textContent = currentLang === 'en' ? 'Dark' : 'Gelap';
+    } else {
+      themeIcon.textContent  = '☀️';
+      themeLabel.textContent = currentLang === 'en' ? 'Light' : 'Terang';
+    }
+    localStorage.setItem('sc_theme', t);
+  }
+
+  themeBtn.addEventListener('click', () => {
+    const current = html.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  /* ─────────────────────────────────────────
+     LANGUAGE SYSTEM
+  ───────────────────────────────────────── */
+  let currentLang = 'en';
+
+  const translations = {
+    en: {
+      nav_about: 'About', nav_problems: 'Problems', nav_solution: 'Solution',
+      nav_overview: 'Overview', nav_existing: 'Existing', nav_usp: 'Why Us', nav_tech: 'Tech',
+      hero_sub: 'An AI-powered worker safety monitoring system designed to detect and prevent industrial accidents in real time.',
+      stat_risk: 'Risk\nFactors', stat_fatigue: 'Fatigue\nDetection', stat_live: 'Live\nMonitoring',
+      btn_solution: 'See the Solution', btn_overview: 'Project Overview',
+      hero_img_placeholder: 'HERO IMAGE\n[ Construction / Safety Site ]',
+      about_tag: 'About the Creator', about_h1: 'About', about_h2: 'Me!',
+      label_name: 'Name', label_school: 'School', label_goal: 'Goal',
+      goal_value: 'Building safer workplaces for workers everywhere',
+      theme_badge: 'Theme: Clean Planet, Healthy People',
+      problems_tag: 'Identifying the Challenge',
+      prob_h1: 'Work', prob_h1b: 'place', prob_h2: 'Accidents',
+      prob_sub: 'Four real hazards that put workers at risk every day.',
+      p1_title: 'Fatigue & Stress', p1_a: 'Long shifts wear down focus and slow reaction time', p1_b: 'Tired workers are more likely to miss hazards and make critical mistakes',
+      p2_title: 'Alcohol', p2_a: 'Alcohol slows reaction and clouds judgment on the job', p2_b: "Affected workers often don't realize they're unfit for duty",
+      p3_title: 'Smoking Hazards', p3_a: 'Smoking in restricted areas is a serious fire and safety risk', p3_b: 'Smoke in danger zones signals a violation that needs immediate action',
+      p4_title: 'Lack of Supervision', p4_a: 'Dangerous conditions can develop fast when no one is watching', p4_b: 'Manual supervision is too slow. On-site, every minute matters',
+      sol_tag: 'The Answer', sol_h1: 'Solution', sol_sub: 'Four features working together to keep workers safe from every angle.',
+      s1_title: 'AI Fatigue\nDetection', s1_a: 'Uses Machine Learning to read alertness levels and catch drowsiness before it becomes a problem', s1_b: 'Earlier detection means action can be taken before an accident occurs',
+      s2_title: 'Health\nCheck-Up', s2_a: 'Every worker goes through a quick condition check before starting their shift', s2_b: 'Covers alcohol level, blood oxygen (SpO2), and heart rate',
+      s3_title: 'Smoke\nDetection', s3_a: 'Sensors run continuously. If someone smokes in a restricted area, the system knows right away', s3_b: 'Supervisors get an instant notification without waiting for a manual report',
+      s4_title: 'Real-Time\nMonitoring', s4_a: 'Camera monitoring starts the moment the system is active', s4_b: "Supervisors can see what's happening on site and respond fast, without being physically there",
+      ov_tag: 'System Architecture', ov_h1: 'Project', ov_h2: 'Overview',
+      ov_click_hint: '↓ Click a menu to see details',
+      fl_admin_login: 'Admin Login', fl_menu_sel: 'Menu Selection',
+      fl_emp_menu: 'Employee Menu', fl_emp_reg: 'Employee Registry', fl_medical: 'Medical Check-Up',
+      fl_admin_menu: 'Admin Menu', fl_live_mon: 'Live Monitoring', fl_admin_ctrl: 'Admin Control',
+      ov_default_title: 'System Overview',
+      slot_default_label: 'Select a menu item on the left to see its details',
+      slot_emp_menu_title: 'Employee Menu', slot_emp_menu_desc: 'Everything employee-related lives here, from registration to daily health checks.',
+      slot_emp_reg_title: 'Employee Registry', slot_emp_reg_desc: "Stores each worker's profile: name, ID, role, and shift schedule, all in one place for the monitoring system.",
+      slot_medical_title: 'Medical Check-Up', slot_medical_desc: 'Before every shift, workers go through a quick check covering heart rate, SpO2, and alcohol level. If anything looks off, the system flags it right away.',
+      slot_admin_menu_title: 'Admin Menu', slot_admin_menu_desc: 'Supervisor-only access. All safety controls and monitoring data are kept here, separate from regular employee access.',
+      slot_live_title: 'Live Monitoring', slot_live_desc: 'Camera, sensors, and AI analysis all in one view. Supervisors can see site conditions in real time from a single screen.',
+      slot_admin_ctrl_title: 'Admin Control', slot_admin_ctrl_desc: 'Set danger thresholds, manage notifications, and review incident history. All from one panel, no switching between apps.',
+      ov_panel_default: 'The system starts with a role-based login. Once in, the admin can switch between the employee tools and the supervisor control panel. Each section has a specific job, keeping the interface fast and easy to use.',
+      ex_tag: 'Before SafeCrew-AI', ex_h1: 'Existing', ex_h2: 'Solutions',
+      ex_sub: 'Products already on the market, and where they fall short.',
+      ex_intro_1: 'Workplace safety technology has been around for a while. Smart helmets detect microsleep. Wearables track fatigue through sleep data. Breathalyzers sit at entry gates.',
+      ex_intro_2: 'The problem is that none of these systems talk to each other. A helmet won\'t know if a worker also had alcohol. A wearable won\'t catch smoke in a restricted area. And most of these products are priced out of reach for smaller worksites.',
+      ex_type_helmet: 'Fatigue Monitoring Helmet', ex_type_watch: 'Wearable Fatigue Monitor', ex_type_breath: 'Standalone Alcohol Check',
+      ex_smartcap_desc: 'A sensor-embedded safety cap that detects fatigue and microsleep from brainwave-like signals. Used in mining, transport, and large-scale construction. Data goes to a cloud dashboard for supervisors.',
+      ex_readi_desc: 'A smartwatch that estimates work readiness based on overnight sleep patterns. Workers get a score at shift start. Widely used in aviation and rail, but workers must wear it off-hours too.',
+      ex_breath_name: 'Gate Breathalyzer',
+      ex_breath_desc: 'The most common alcohol screening tool on worksites. Workers blow into it at shift start. Simple and reliable, but fully manual, checked only once per day, and not connected to any other system.',
+      tag_fatigue: 'Fatigue Detection', tag_wearable: 'Wearable', tag_no_alcohol: 'No Alcohol Check', tag_costly: 'High Cost',
+      tag_sleep: 'Sleep Tracking', tag_predictive: 'Predictive Score', tag_no_realtime: 'No Real-Time Sensor', tag_compliance: 'Compliance Dependent',
+      tag_alcohol: 'Alcohol Detection', tag_affordable: 'Low Cost', tag_manual: 'Manual Process', tag_no_integration: 'No Integration',
+      gap_title: 'The Gap They All Share',
+      gap_desc: 'Each product above solves one problem but ignores the rest. None of them combine fatigue detection, alcohol monitoring, smoke detection, and live supervision in a single system. That\'s exactly what SafeCrew-AI was built to do, without the expensive hardware most worksites can\'t afford.',
+      usp_tag: 'Competitive Advantage', usp_h1: 'Unique', usp_h2: 'Selling', usp_h3: 'Point',
+      usp1_title: 'Multi-Factor Risk Monitoring', usp1_desc: 'Most systems only look for one hazard. SafeCrew-AI tracks <strong>fatigue, alcohol, and smoke simultaneously</strong>, giving a much more complete picture of worker safety at any given moment.',
+      usp2_title: 'Real-Time Risk Calculation', usp2_desc: 'The system constantly updates a <strong>live risk score</strong> from all active sensors. If conditions get worse, an alert fires immediately without waiting for someone to report it.',
+      usp3_title: 'Accessible & Cost-Effective', usp3_desc: 'No smart helmets or wearables needed. SafeCrew-AI runs on <strong>standard sensors and a regular camera</strong>, making it practical and affordable for any worksite.',
+      usp4_title: 'Integrated Monitoring Platform', usp4_desc: 'Sensor data, AI analysis, and the supervisor dashboard are all in <strong>one platform</strong>. No switching between apps or screens to know what\'s happening on site.',
+      tech_tag: 'Under the Hood', tech_h1: 'Software &', tech_h2: 'Hardware',
+      tech_sw: 'Software', tech_hw: 'Hardware',
+      sw1_name: 'Monitoring Interface', sw1_desc: 'A real-time dashboard where supervisors can track worker status and respond to alerts as they happen.',
+      sw2_name: 'Risk Calculation Algorithm', sw2_desc: 'Pulls data from all sensors and generates a live risk score based on current conditions.',
+      sw3_name: 'Fatigue Detection (ML)', sw3_desc: 'A machine learning model trained to spot drowsiness from facial and behavioral cues throughout a shift.',
+      sw4_name: 'Alert System', sw4_desc: 'Triggers automatically when any reading crosses a danger threshold. Sound, light, or a notification to the supervisor.',
+      hw1_name: 'Alcohol Sensor (MQ-3)', hw1_desc: 'Detects alcohol in the air near workers. If levels exceed the safe limit, the system logs it and flags the alert.',
+      hw2_name: 'Smoke Sensor (MQ-135)', hw2_desc: 'Placed in high-risk areas and runs constantly to catch cigarette smoke or hazardous air quality.',
+      hw3_name: 'Display Modules (LCD & LED)', hw3_desc: 'Gives instant visual feedback on-site so workers and supervisors can read system status at a glance.',
+      hw4_name: 'Heart Rate & SpO2 (MAX3012)', hw4_desc: 'Reads heart rate and blood oxygen levels, then sends the data live to ThingSpeak and PictoBlox.',
+      cta_eyebrow: "Let's make it happen", cta_h1: 'Safer', cta_h2: 'Workers.', cta_h3: 'Smarter', cta_h4: 'Sites.',
+      cta_sub: '"Every worker deserves to come home safe."',
+      cta_btn1: 'Explore the Problem', cta_btn2: 'See the Solution',
+    },
+    id: {
+      nav_about: 'Tentang', nav_problems: 'Masalah', nav_solution: 'Solusi',
+      nav_overview: 'Cara Kerja', nav_existing: 'Kompetitor', nav_usp: 'Keunggulan', nav_tech: 'Teknologi',
+      hero_sub: 'Sistem pengawasan keselamatan kerja berbasis AI yang bisa mendeteksi kelelahan, alkohol, asap rokok, dan kelalaian pengawasan — langsung di lapangan, secara real time.',
+      stat_risk: 'Faktor\nBahaya', stat_fatigue: 'Deteksi\nKantuk', stat_live: 'Pantau\n24 Jam',
+      btn_solution: 'Lihat Solusinya', btn_overview: 'Cara Kerja Sistem',
+      hero_img_placeholder: 'GAMBAR UTAMA\n[ Lokasi Konstruksi / Area Kerja ]',
+      about_tag: 'Siapa di Balik Ini', about_h1: 'Tentang', about_h2: 'Saya!',
+      label_name: 'Nama', label_school: 'Sekolah', label_goal: 'Misi',
+      goal_value: 'Bikin tempat kerja jadi lebih aman — buat semua pekerja, di mana pun mereka berada',
+      theme_badge: 'Tema: Planet Bersih, Manusia Sehat',
+      problems_tag: 'Apa yang Jadi Masalah',
+      prob_h1: 'Kecela', prob_h1b: 'kaan', prob_h2: 'Kerja',
+      prob_sub: 'Empat ancaman nyata yang tiap hari mengintai pekerja di lapangan.',
+      p1_title: 'Kelelahan & Stres', p1_a: 'Kerja terlalu lama bikin tubuh dan pikiran lambat laun kehilangan fokus', p1_b: 'Shift panjang tanpa istirahat cukup adalah kombinasi berbahaya di lingkungan kerja berisiko tinggi',
+      p2_title: 'Alkohol', p2_a: 'Alkohol memperlambat reaksi dan melemahkan penilaian — keduanya krusial saat bekerja di lapangan', p2_b: 'Pekerja yang terpengaruh alkohol sering kali tidak sadar bahwa mereka sudah tidak aman untuk bertugas',
+      p3_title: 'Bahaya Asap Rokok', p3_a: 'Merokok di area terlarang bukan cuma soal aturan — ini bisa memicu kebakaran serius', p3_b: 'Asap di zona berbahaya menandakan ada yang salah, dan harus ditangani cepat',
+      p4_title: 'Minim Pengawasan', p4_a: 'Kondisi berbahaya bisa terjadi kapan saja — tapi pengawas tidak mungkin ada di mana-mana sekaligus', p4_b: 'Pengawasan manual itu lambat; di lapangan, satu menit saja bisa jadi perbedaan besar',
+      sol_tag: 'Jawabannya', sol_h1: 'Solusi', sol_sub: 'Empat fitur yang saling melengkapi untuk menjaga keselamatan pekerja dari berbagai sisi.',
+      s1_title: 'Deteksi\nKantuk AI', s1_a: 'Pakai Machine Learning untuk baca level kewaspadaan pekerja dan tangkap tanda-tanda ngantuk sebelum jadi masalah', s1_b: 'Deteksi lebih awal berarti bisa ambil tindakan sebelum kecelakaan sempat terjadi',
+      s2_title: 'Cek\nKesehatan', s2_a: 'Sebelum mulai kerja, setiap pekerja lewat pengecekan kondisi tubuh — sederhana tapi penting', s2_b: 'Cek mencakup kadar alkohol, saturasi oksigen (SpO2), dan detak jantung secara langsung',
+      s3_title: 'Deteksi\nAsap', s3_a: 'Sensor asap aktif terus-menerus — kalau ada yang merokok di area terlarang, sistem langsung tahu', s3_b: 'Notifikasi dikirim ke pengawas secara instan, tidak perlu menunggu ada yang melapor manual',
+      s4_title: 'Pantau\nLangsung', s4_a: 'Begitu sistem menyala, kamera langsung merekam dan menganalisis aktivitas di lapangan', s4_b: 'Pengawas bisa pantau kondisi lapangan dan respons cepat tanpa harus ada di lokasi',
+      ov_tag: 'Cara Kerja Sistem', ov_h1: 'Cara', ov_h2: 'Kerjanya',
+      ov_click_hint: '↓ Klik salah satu menu untuk lihat detailnya',
+      fl_admin_login: 'Login Admin', fl_menu_sel: 'Pilih Menu',
+      fl_emp_menu: 'Menu Karyawan', fl_emp_reg: 'Data Karyawan', fl_medical: 'Cek Kesehatan',
+      fl_admin_menu: 'Menu Admin', fl_live_mon: 'Pantau Langsung', fl_admin_ctrl: 'Kontrol Admin',
+      ov_default_title: 'Tampilan Sistem',
+      slot_default_label: 'Pilih salah satu menu di sebelah kiri untuk melihat penjelasannya',
+      slot_emp_menu_title: 'Menu Karyawan', slot_emp_menu_desc: 'Semua yang berkaitan dengan karyawan ada di sini, mulai dari pendataan sampai cek kondisi harian sebelum masuk kerja.',
+      slot_emp_reg_title: 'Data Karyawan', slot_emp_reg_desc: 'Sistem menyimpan profil tiap pekerja: nama, ID, jabatan, dan jadwal shift. Semua terekam rapi untuk keperluan pemantauan.',
+      slot_medical_title: 'Cek Kesehatan', slot_medical_desc: 'Setiap hari sebelum kerja, pekerja cek kondisi tubuh secara cepat: detak jantung, kadar oksigen, dan alkohol. Kalau ada yang tidak aman, sistem langsung memberi tanda.',
+      slot_admin_menu_title: 'Menu Admin', slot_admin_menu_desc: 'Hanya pengawas yang bisa masuk ke sini. Semua kontrol dan data keselamatan ada di menu ini, terpisah dari akses karyawan.',
+      slot_live_title: 'Pantau Langsung', slot_live_desc: 'Kamera, sensor, dan analisis AI dalam satu tampilan. Pengawas bisa lihat kondisi lapangan secara langsung dari satu layar.',
+      slot_admin_ctrl_title: 'Kontrol Admin', slot_admin_ctrl_desc: 'Atur batas bahaya, kelola notifikasi, dan cek riwayat kejadian. Semuanya dari satu panel.',
+      ov_panel_default: 'Sistemnya sederhana: masuk lewat login admin, lalu pilih menu karyawan atau menu pengawas. Tiap menu punya fungsinya sendiri supaya penggunaannya cepat dan tidak membingungkan.',
+      ex_tag: 'Sebelum Ada SafeCrew-AI', ex_h1: 'Yang Sudah', ex_h2: 'Ada',
+      ex_sub: 'Produk yang sudah ada di pasaran, dan di mana masing-masing masih kurang.',
+      ex_intro_1: 'Teknologi keselamatan kerja sudah ada cukup lama. Ada helm pintar yang bisa deteksi microsleep, ada wearable yang melacak kelelahan lewat data tidur, dan ada breathalyzer yang dipasang di pintu masuk lokasi.',
+      ex_intro_2: 'Masalahnya, semua berdiri sendiri. Helm tidak tahu kalau pekerja juga habis minum alkohol. Wearable tidak bisa deteksi asap rokok. Breathalyzer cuma cek sekali di awal shift. Dan harganya sering tidak masuk akal untuk lokasi kerja skala menengah.',
+      ex_type_helmet: 'Helm Pemantau Kelelahan', ex_type_watch: 'Wearable Pemantau Kelelahan', ex_type_breath: 'Cek Alkohol di Pintu Masuk',
+      ex_smartcap_desc: 'Topi keselamatan berteknologi sensor yang bisa mendeteksi tanda-tanda microsleep dari sinyal otak. Banyak dipakai di pertambangan dan konstruksi skala besar. Data dikirim ke dashboard cloud yang bisa dipantau oleh supervisor.',
+      ex_readi_desc: 'Jam tangan pintar yang menilai kesiapan kerja seseorang berdasarkan kualitas tidur malamnya. Di awal shift, pekerja dapat skor — hijau berarti siap, merah berarti perlu istirahat. Kelemahannya, pekerja harus mau pakai alat ini bahkan saat di luar jam kerja.',
+      ex_breath_name: 'Breathalyzer Pintu Masuk',
+      ex_breath_desc: 'Alat paling umum untuk deteksi alkohol di lokasi kerja. Cara pakainya sederhana: tiup, lalu tunggu hasilnya. Murah dan cukup andal — tapi sepenuhnya manual, hanya dipakai sekali sehari, dan tidak terhubung ke sistem apapun.',
+      tag_fatigue: 'Deteksi Kantuk', tag_wearable: 'Wearable', tag_no_alcohol: 'Tidak Ada Cek Alkohol', tag_costly: 'Harga Mahal',
+      tag_sleep: 'Lacak Tidur', tag_predictive: 'Skor Kesiapan', tag_no_realtime: 'Tidak Ada Sensor Langsung', tag_compliance: 'Bergantung Niat Pakai',
+      tag_alcohol: 'Deteksi Alkohol', tag_affordable: 'Harga Terjangkau', tag_manual: 'Proses Manual', tag_no_integration: 'Tidak Terintegrasi',
+      gap_title: 'Satu Masalah yang Sama',
+      gap_desc: 'Semua produk di atas menyelesaikan satu masalah tapi lupa yang lainnya. Tidak ada yang bisa deteksi kelelahan, alkohol, asap, dan pengawasan dalam satu sistem. Itulah yang coba diselesaikan SafeCrew-AI, tanpa hardware mahal.',
+      usp_tag: 'Kenapa Pilih SafeCrew-AI', usp_h1: 'Yang Bikin', usp_h2: 'Beda', usp_h3: 'Dari Lain',
+      usp1_title: 'Pantau Banyak Risiko Sekaligus', usp1_desc: 'Kebanyakan sistem hanya fokus pada satu bahaya. SafeCrew-AI memantau <strong>kelelahan, alkohol, dan asap rokok sekaligus</strong>, jauh lebih lengkap dan tidak ada yang terlewat.',
+      usp2_title: 'Skor Bahaya yang Selalu Update', usp2_desc: 'Sistem terus menghitung <strong>skor risiko secara langsung</strong> dari semua sensor yang aktif. Kalau kondisi memburuk, peringatan langsung muncul tanpa perlu menunggu laporan.',
+      usp3_title: 'Tidak Butuh Alat Mahal', usp3_desc: 'Tidak perlu helm pintar atau wearable canggih. SafeCrew-AI cukup pakai <strong>sensor biasa dan kamera standar</strong>, lebih mudah dipasang dan jauh lebih hemat biaya.',
+      usp4_title: 'Semua dalam Satu Tempat', usp4_desc: 'Data sensor, analisis AI, dan dashboard pengawas semuanya ada <strong>dalam satu platform</strong>. Tidak perlu buka banyak aplikasi untuk tahu kondisi lapangan.',
+      tech_tag: 'Teknologi yang Dipakai', tech_h1: 'Software &', tech_h2: 'Hardware',
+      tech_sw: 'Software', tech_hw: 'Hardware',
+      sw1_name: 'Dashboard Pemantauan', sw1_desc: 'Tampilan utama pengawas untuk lihat status pekerja dan notifikasi bahaya secara real time.',
+      sw2_name: 'Algoritma Skor Risiko', sw2_desc: 'Mengolah data dari semua sensor dan menghitung tingkat risiko saat ini. Kalau angkanya melampaui batas, sistem otomatis memberi peringatan.',
+      sw3_name: 'Deteksi Kantuk (ML)', sw3_desc: 'Model machine learning yang dilatih mengenali tanda-tanda ngantuk dari wajah dan perilaku pekerja selama shift.',
+      sw4_name: 'Sistem Alarm', sw4_desc: 'Aktif otomatis begitu ada yang melampaui ambang batas: suara, cahaya, atau notifikasi ke pengawas.',
+      hw1_name: 'Sensor Alkohol (MQ-3)', hw1_desc: 'Mendeteksi kadar alkohol di udara sekitar pekerja. Kalau ada yang melampaui batas aman, sistem langsung mencatat dan memberi peringatan.',
+      hw2_name: 'Sensor Asap (MQ-135)', hw2_desc: 'Dipasang di area rawan dan terus aktif memantau kalau ada asap rokok atau udara berbahaya.',
+      hw3_name: 'Layar & Lampu Indikator (LCD & LED)', hw3_desc: 'Memberi feedback visual langsung di lokasi supaya pekerja dan pengawas bisa tahu status sistem dengan cepat.',
+      hw4_name: 'Sensor Detak Jantung & SpO2 (MAX3012)', hw4_desc: 'Membaca detak jantung dan kadar oksigen darah pekerja, lalu langsung mengirim data ke ThingSpeak dan PictoBlox.',
+      cta_eyebrow: 'Ayo kita mulai', cta_h1: 'Pekerja', cta_h2: 'Aman.', cta_h3: 'Tempat Kerja', cta_h4: 'Lebih Baik.',
+      cta_sub: '"Setiap pekerja berhak pulang ke rumah dengan selamat."',
+      cta_btn1: 'Lihat Masalahnya', cta_btn2: 'Lihat Solusinya',
+    }
+  };
+
+  const langBtn   = document.getElementById('lang-toggle');
+  const langLabel = document.getElementById('lang-label');
+
+  function applyLang(lang) {
+    currentLang = lang;
+    const t = translations[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (t[key] !== undefined) {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          el.placeholder = t[key];
+        } else {
+          // preserve innerHTML for strong tags
+          el.innerHTML = t[key].replace(/\n/g, '<br>');
+        }
+      }
+    });
+    html.setAttribute('lang', lang);
+    langLabel.textContent = lang === 'en' ? 'ID' : 'EN';
+    // update theme label text in new lang
+    const theme = html.getAttribute('data-theme');
+    if (theme === 'light') {
+      themeLabel.textContent = lang === 'en' ? 'Dark' : 'Gelap';
+    } else {
+      themeLabel.textContent = lang === 'en' ? 'Light' : 'Terang';
+    }
+    // update panel desc if a menu is active
+    const activeKey = document.querySelector('.flow-node.active[data-menu]');
+    if (activeKey) {
+      updatePanel(activeKey.getAttribute('data-menu'));
+    } else {
+      const panelDesc = document.getElementById('panel-desc');
+      if (panelDesc && t['ov_panel_default']) panelDesc.innerHTML = t['ov_panel_default'];
+    }
+    localStorage.setItem('sc_lang', lang);
+  }
+
+  langBtn.addEventListener('click', () => {
+    applyLang(currentLang === 'en' ? 'id' : 'en');
+  });
+
+  /* ─────────────────────────────────────────
+     OVERVIEW INTERACTIVE MENU
+  ───────────────────────────────────────── */
+  const menuPanelData = {
+    employee_menu: { title: 'slot_emp_menu_title', desc: 'slot_emp_menu_desc' },
+    emp_registry:  { title: 'slot_emp_reg_title',  desc: 'slot_emp_reg_desc' },
+    medical_checkup: { title: 'slot_medical_title', desc: 'slot_medical_desc' },
+    admin_menu:    { title: 'slot_admin_menu_title', desc: 'slot_admin_menu_desc' },
+    live_monitoring: { title: 'slot_live_title',    desc: 'slot_live_desc' },
+    admin_control: { title: 'slot_admin_ctrl_title', desc: 'slot_admin_ctrl_desc' },
+  };
+
+  function updatePanel(menuKey) {
+    // Hide all slots
+    document.querySelectorAll('.photo-slot').forEach(s => s.classList.remove('visible'));
+    // Show selected
+    const slot = document.getElementById('slot-' + menuKey);
+    if (slot) slot.classList.add('visible');
+
+    // Update panel title
+    const data = menuPanelData[menuKey];
+    if (data) {
+      const t = translations[currentLang];
+      document.getElementById('panel-menu-name').textContent = t[data.title] || menuKey;
+      document.getElementById('panel-desc').textContent = t[data.desc] || '';
+    }
+  }
+
+  document.querySelectorAll('.flow-node[data-menu]').forEach(node => {
+    node.addEventListener('click', () => {
+      // Remove active from all
+      document.querySelectorAll('.flow-node[data-menu]').forEach(n => n.classList.remove('active'));
+      node.classList.add('active');
+      updatePanel(node.getAttribute('data-menu'));
+    });
+  });
+
+  /* ─────────────────────────────────────────
+     INIT — load saved preferences
+  ───────────────────────────────────────── */
+  const savedTheme = localStorage.getItem('sc_theme') || 'dark';
+  const savedLang  = localStorage.getItem('sc_lang')  || 'en';
+  setTheme(savedTheme);
+  applyLang(savedLang);
+</script>
 </body>
 </html>
